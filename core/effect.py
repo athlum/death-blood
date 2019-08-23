@@ -7,6 +7,7 @@ class Dodge(object):
     def __init__(self, u):
         self.oriInterval = u.interval
         self.life = 3
+        self.dead = False
 
     def type(self):
         return Effect.Skill
@@ -19,9 +20,9 @@ class Dodge(object):
             u.safe = False
 
     def restore(self, u):
-        if self.life < 0:
-            return
-        self.setInterval(u, self.oriInterval)
+        if not self.dead:
+            self.setInterval(u, self.oriInterval)
+            self.dead = True
 
     def act(self, u):
         if self.life <= 0:

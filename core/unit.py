@@ -22,7 +22,7 @@ class Stamina(Tick):
         self.counter= 0
 
     def stat(self):
-        return "St {}/{}".format(self.left, self.stock)
+        return "            " if self.left < 1 else "[Dodge]"
 
     def tryIncr(self):
         if self.left < self.stock:
@@ -61,7 +61,7 @@ class Gun(Tick):
         self.counter = 0
 
     def stat(self):
-        return "A {}/{}".format(self.left, self.stock)
+        return "A - {}{}".format(self.left * "|", (self.stock-self.left)*" ")
 
     def tryIncr(self):
         if self.left < self.stock:
@@ -209,6 +209,8 @@ class Player(Unit, KeyWrapper, Tick):
                 ne.append(e)
                 if e.type() == Effect.Buff:
                     nb.append(e)
+            else:
+                e.restore(self)
         self.effects = ne
         self.buffs = nb
     
@@ -345,7 +347,12 @@ class Enemy(Unit):
         x = self.pos[0] - self.target[0]
         y = self.pos[1] - self.target[1]
         ds = [K_UP if y > 0 else K_DOWN, K_LEFT if x > 0 else K_RIGHT]
-        d = ds[random.randint(0, len(ds)-1)]
+        i = 0
+        if y == 0:
+            i = 1
+        elif x != 0:
+            i = random.randint(0, len(ds)-1)
+        d = ds[i]
         if self.dir != d:
             self.dir = d
             self.fill()

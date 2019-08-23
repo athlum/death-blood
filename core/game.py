@@ -34,9 +34,11 @@ class Game(Scope):
             if self.state == State.Stopped and e.key == K_r:
                 self.init()
                 self.state = State.Running
+                return
             elif self.state == State.Init:
                 self.init()
                 self.state = State.Running
+                return
         super(Game, self).emit(e)
 
     def init(self):
