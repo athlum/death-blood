@@ -1,7 +1,14 @@
-just a pygame exercise
+Just a pygame exercise(python3)
 
-### build for mac
+### Run in source
 
-`
+```
+pip3 install pygame
+python3 death_blood.py
+```
+
+### Build for mac
+
+```
     make macos
-`
+```
