@@ -1,4 +1,4 @@
-just a pygame excise
+just a pygame exercise
 
 ### build for mac
 
