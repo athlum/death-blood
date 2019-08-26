@@ -22,7 +22,7 @@ class Stamina(Tick):
         self.counter= 0
 
     def stat(self):
-        return "            " if self.left < 1 else "[Dodge]"
+        return "[          ]" if self.left < 1 else "[Dodge]"
 
     def tryIncr(self):
         if self.left < self.stock:
@@ -52,16 +52,19 @@ class Stamina(Tick):
         return d
 
 class Gun(Tick):
-    bulletLife = 24
-    stock = 3
+    bulletLife = 36 
+    stockInterval = 24
+    stock = 5
+
     def __init__(self):
         self.stock = Gun.stock
         self.left = Gun.stock
-        self.interval = 24
+        self.interval = Gun.stockInterval
+        self.bulletLife = Gun.bulletLife
         self.counter = 0
 
     def stat(self):
-        return "A - {}{}".format(self.left * "|", (self.stock-self.left)*" ")
+        return "{}{}".format(self.left * "|", (self.stock-self.left)*" ")
 
     def tryIncr(self):
         if self.left < self.stock:
@@ -87,7 +90,7 @@ class Gun(Tick):
     def fire(self, pos, dir, handler):
         b = None
         if self.tryCost():
-            b = Bullet.default(pos, dir, Gun.bulletLife, handler)
+            b = Bullet.default(pos, dir, self.bulletLife, handler)
         return b
 
 class Player(Unit, KeyWrapper, Tick):
@@ -95,6 +98,7 @@ class Player(Unit, KeyWrapper, Tick):
     FIRE = 1
     width = 5
     height = 5
+    interval = 4
 
     clothColor = (31,98,165)
     hairColor = (0,0,0)
@@ -111,28 +115,50 @@ class Player(Unit, KeyWrapper, Tick):
         self.left = 1
         self.opts = []
         self.his = {}
-        self.interval = 4
+        self.interval = Player.interval
         self.counter = 0
         self.safe = False
+        self.puncture = False
         self.bullets = []
         self.effects = []
         self.buffs = []
+        
+        self.clothColor = Player.clothColor
 
     def type():
         return UnitRole.Player
 
+    def buffStat(self):
+        b = None
+        if len(self.buffs) > 0:
+            b = self.buffs[0]
+        return "[{}]".format("  " if b == None else b.time())
+
     def stat(self):
-        return "{}   {}".format(self.gun.stat(), self.stamina.stat())
+        return "{} - {} - {}".format(self.gun.stat(), self.stamina.stat(), self.buffStat())
+
+    def setInterval(self, v):
+        if self.interval != v:
+            f = float(v)/float(self.interval)
+            if f > 1.0:
+                f = 1.0
+            self.surf.set_alpha(int(255.0 * f))
+            self.convert()
+            self.interval = v
+
+    def setSafe(self, v):
+        if self.safe != v:
+            self.safe = v
 
     def fill(self):
         if not self.surf:
             return self
 
         dm = {
-            K_UP: [[(0,0), (5,2), Player.hairColor], [(0,2),(5,3), Player.clothColor]],
-            K_LEFT: [[(0,0), (5,2), Player.hairColor], [(0,1),(3,1), Player.faceColor], [(0,2),(5,3), Player.clothColor], [(0,3),(1,1), Player.gunColor]],
-            K_DOWN: [[(0,0), (5,2), Player.hairColor], [(1,1),(3,1), Player.faceColor], [(0,2),(5,3), Player.clothColor], [(0,3),(3,1), Player.gunColor]],
-            K_RIGHT: [[(0,0), (5,2), Player.hairColor], [(2,1),(3,1), Player.faceColor], [(0,2),(5,3), Player.clothColor], [(2,3),(3,1), Player.gunColor]],
+            K_UP: [[(0,0), (5,2), Player.hairColor], [(0,2),(5,3), self.clothColor]],
+            K_LEFT: [[(0,0), (5,2), Player.hairColor], [(0,1),(3,1), Player.faceColor], [(0,2),(5,3), self.clothColor], [(0,3),(1,1), Player.gunColor]],
+            K_DOWN: [[(0,0), (5,2), Player.hairColor], [(1,1),(3,1), Player.faceColor], [(0,2),(5,3), self.clothColor], [(0,3),(3,1), Player.gunColor]],
+            K_RIGHT: [[(0,0), (5,2), Player.hairColor], [(2,1),(3,1), Player.faceColor], [(0,2),(5,3), self.clothColor], [(2,3),(3,1), Player.gunColor]],
         }
         for r in dm.get(self.fireDir, []):
             rect = pygame.Rect(*r[:-1])
@@ -140,7 +166,7 @@ class Player(Unit, KeyWrapper, Tick):
         self.convert()
         return self 
 
-    def act(self):
+    def act(self, stopped):
         action = Player.MOVE
         for e in self.opts:
             key = 0
@@ -168,8 +194,9 @@ class Player(Unit, KeyWrapper, Tick):
                 if self.dir == key and not KEYDOWN in self.his[key]:
                     self.dir = None
 
-        for e in self.effects:
-            e.act(self)
+        if not stopped:
+            for e in self.effects:
+                e.act(self)
 
         if action == Player.MOVE:
             if self.dir and self.tryCost():
@@ -187,8 +214,8 @@ class Player(Unit, KeyWrapper, Tick):
     def update(self, e):
         self.opts.append(e)
 
-    def draw(self, screen):
-        self.act()
+    def draw(self, screen, stopped):
+        self.act(stopped)
         super(Player, self).draw(screen)
 
     def incr(self):
@@ -201,6 +228,15 @@ class Player(Unit, KeyWrapper, Tick):
             self.left -= 1
         return res
 
+    def getItem(self, i):
+        e = i.effect(self)
+        for ee in self.effects:
+            if ee.type() == Effect.Skill:
+                self.effects.append(ee)
+        self.effects.append(e)
+        self.buffs = [e]
+        self.fill()
+
     def effectC(self):
         ne = []
         nb = []
@@ -211,6 +247,7 @@ class Player(Unit, KeyWrapper, Tick):
                     nb.append(e)
             else:
                 e.restore(self)
+                self.fill()
         self.effects = ne
         self.buffs = nb
     
@@ -222,7 +259,7 @@ class Player(Unit, KeyWrapper, Tick):
             self.stamina.tick(self.interval)
             self.effectC()
 
-        self.draw(screen)
+        self.draw(screen, False)
         if v:
             self.his = {}
 
@@ -247,6 +284,8 @@ class Player(Unit, KeyWrapper, Tick):
         for b in self.bullets:
             if b.samePos(e.pos) and not shot:
                 shot = True
+                if self.puncture:
+                    nb.append(b)
             else:
                 nb.append(b)
         self.bullets = nb

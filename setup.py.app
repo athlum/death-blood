@@ -23,7 +23,7 @@ class recipe_plugin(object):
 
 py2app.recipes.my_recipe = recipe_plugin
 
-APP = ['xeno-metal.py']
+APP = ['death_blood.py']
 DATA_FILES = []
 OPTIONS = {}
 

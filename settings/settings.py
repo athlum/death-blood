@@ -9,3 +9,4 @@ fontColor = (255,255,255)
 titleColor = (238,238,238)
 enemyLife = 30
 timedelta = 30000
+itemLife = 30 * 50

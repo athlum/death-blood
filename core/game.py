@@ -3,8 +3,9 @@ import pygame
 from pygame.locals import *
 
 from core.scope import Scope
-from res import Base, Text
 from core.unit import Player, Enemies
+from core.support import Support
+from res import Base, Text
 from utils import Tick
 from settings import *
 
@@ -42,6 +43,7 @@ class Game(Scope):
         super(Game, self).emit(e)
 
     def init(self):
+        self.sm = Support()
         self.pc = Player(self.map.ramPos(Player.width, Player.height), self.map.calPos)
         self.lf = LevelFactor()
         self.enemies = Enemies(self.lf, self.map, handler=self.map.calPos)
@@ -54,6 +56,7 @@ class Game(Scope):
                 self.state = State.Stopped
             self.stat.score += score
             self.lf.cal(self.stat.score)
+            self.sm.support(self.map, self.pc, self.stat.score)
 
     def update(self, e):
         if self.running():
@@ -73,6 +76,7 @@ class Game(Scope):
     def updateDraw(self, screen):
         if self.running():
             self.map.updateDraw(screen)
+            self.sm.updateDraw(screen)
             self.pc.updateDraw(screen)
             self.enemies.updateDraw(screen)
             self.pc.bulletsUpdateDraw(screen)
@@ -83,7 +87,8 @@ class Game(Scope):
     def draw(self, screen):
         self.map.draw(screen)
         if self.state != State.Init:
-            self.pc.draw(screen)
+            self.sm.draw(screen)
+            self.pc.draw(screen, self.state == State.Stopped)
             self.enemies.draw(screen)
             self.pc.bulletsDraw(screen)
         self.drawText(screen)
@@ -142,7 +147,7 @@ class Stat(Text):
         return (self.max - len(s))*"0" + s
 
     def draw(self, screen, texts):
-        sep = " "*3
+        sep = " - "
         text = "{}{}{}".format(self.string(), sep, sep.join(texts))
         super(Stat, self).draw(screen, text)
 
