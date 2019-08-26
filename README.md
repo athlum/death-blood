@@ -10,5 +10,5 @@ python3 death_blood.py
 ### Build for mac
 
 ```
-    make macos
+make macos
 ```
